@@ -1,0 +1,9 @@
+Parameter,LowerBound,Start,UpperBound,TruthForFakeData
+fR,0.1,0.9,1,0.9
+K,0.1,0.91,5,0.91
+sdZ,0.1,2.5,5,2.5
+sdP,0.1,1.4,5,1.4
+fJ,0.1,0.9,1,0.9
+d,0.00001,0.005,0.1,0.005
+W,0.1,1,10,1
+q,1,1.2,2.5,1.2

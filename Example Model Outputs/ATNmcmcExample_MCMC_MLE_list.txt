@@ -1,0 +1,1 @@
+chain	iteration	posterior	likelihood	aRP1	aRP2	aRP3	aJZ1	aJZ2	aJZ3	aTZ1	aTZ2	aTZ3	startP1	startP2	startP3	startZ1	startZ2	startZ3	fR	K	sdZ	sdP	fJ	d	W	q

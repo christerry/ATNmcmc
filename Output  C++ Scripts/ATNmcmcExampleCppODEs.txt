@@ -1,0 +1,237 @@
+#include "preamble.h" 
+#ifdef  ATNmcmcExample  
+#include <stdlib.h> 
+#include <math.h> 
+#include <string.h>
+#include "filzbach.h"
+#include <iostream> 
+#include <boost/array.hpp> 
+#include <boost/numeric/odeint.hpp>
+using namespace std;
+using namespace boost::numeric::odeint;
+void pause(){PAUSE}  
+void fake_data(); 
+void read_data(); 
+void setup_parameters();
+void fit_model();
+void final_output();
+double aTZ1;
+ double aTZ2;
+ double aTZ3;
+ double aJZ1;
+ double aJZ2;
+ double aJZ3;
+ double aRP1;
+ double aRP2;
+ double aRP3;
+ double startP1; 
+double startP2; 
+double startP3; 
+double startZ1; 
+double startZ2; 
+double startZ3; 
+double fJ =  0.9 ;
+      double fR =  0.9 ;
+      double d =  0.005 ;
+      double K =  0.91 ;  
+      double sdZ =  2.5 ; 
+      double sdP =  1.4 ;
+      double W =  1 ;
+      double q =  1.2 ;
+      double PhytoTotal; 
+ double Q0; double W0;
+double Q1; double W1;
+double Q2; double W2;
+double Q3; double W3;
+double Q4; double W4;
+double Q5; double W5;
+ 
+// Note that these are mass ^ -0.25 
+const double imP1= 6.69; 
+const double imP2= 3.76; 
+const double imP3= 4.73; 
+const double imZ1= 2.11; 
+const double imZ2= 1.78; 
+const double imZ3= 1.19; 
+
+ 
+                      
+                      typedef boost::array< double , 6 > state_type; // Create internal array the size of what needs to be tracked
+                      typedef runge_kutta_cash_karp54< state_type > error_stepper_type; // Type of stepper used see http://headmyshoulder.github.io/odeint-v2/index.html docs for details
+                      typedef controlled_runge_kutta< error_stepper_type > controlled_stepper_type;
+                      double abs_err = 1e-12 , rel_err = 1e-06 , a_x = 1.0 , a_dxdt = 1.0;
+                      controlled_stepper_type controlled_stepper(
+                      default_error_checker< double , range_algebra , default_operations >( abs_err , rel_err , a_x , a_dxdt ) );
+                      int timerow = 0; 
+
+ void ODE( const state_type &x , state_type &dxdt , double t )
+{W0=x[0]/W;Q0=pow(W0,q);W1=x[1]/W;Q1=pow(W1,q);W2=x[2]/W;Q2=pow(W2,q);W3=x[3]/W;Q3=pow(W3,q);W4=x[4]/W;Q4=pow(W4,q);W5=x[5]/W;Q5=pow(W5,q);PhytoTotal = 0+x[0]+x[1]+x[2]; 
+ /*  P1      */ dxdt[0] = fR*aRP1*imP1*x[0]*(1 -(PhytoTotal/K)) 
+                              -(fJ*aJZ1*imZ1*2*x[3] * Q0/(1+d*x[3]+(Q0+Q2+0))) // Impact of Z1
+                           ;
+ /*  P2      */ dxdt[1] = fR*aRP2*imP2*x[1]*(1 -(PhytoTotal/K)) 
+                              -(fJ*aJZ2*imZ2*2*x[4] * Q1/(1+d*x[4]+(Q1+Q2+0))) // Impact of Z2
+                           ;
+ /*  P3      */ dxdt[2] = fR*aRP3*imP3*x[2]*(1 -(PhytoTotal/K)) 
+                              -(fJ*aJZ1*imZ1*2*x[3] * Q2/(1+d*x[3]+(Q0+Q2+0))) // Impact of Z1
+                           -(fJ*aJZ2*imZ2*2*x[4] * Q2/(1+d*x[4]+(Q1+Q2+0))) // Impact of Z2
+                           ;
+ /*  Z1      */ dxdt[3] =  fJ*aJZ1*imZ1*x[3] *(0+Q0+Q2)/(1 + d*x[3] +(0+Q0+Q2))//  Gain from predation 
+                           -(aTZ1*imZ1*x[3]) // Loss from Respiration 
+                            -(fJ*aJZ3*imZ3*2*x[5] * Q3/(1+d*x[5]+(Q3+Q4+0))) // Impact of Z3
+                           ;
+ /*  Z2      */ dxdt[4] =  fJ*aJZ2*imZ2*x[4] *(0+Q1+Q2)/(1 + d*x[4] +(0+Q1+Q2))//  Gain from predation 
+                           -(aTZ2*imZ2*x[4]) // Loss from Respiration 
+                            -(fJ*aJZ3*imZ3*2*x[5] * Q4/(1+d*x[5]+(Q3+Q4+0))) // Impact of Z3
+                           ;
+ /*  Z3      */ dxdt[5] =  fJ*aJZ3*imZ3*x[5] *(0+Q3+Q4)/(1 + d*x[5] +(0+Q3+Q4))//  Gain from predation 
+                           -(aTZ3*imZ3*x[5]) // Loss from Respiration 
+                            ;
+
+ } 
+ void read_data()
+{table_read("mydata","./workspace/ExampleTimeSeries.txt",6);
+table_addcolumn("mydata", "foundP1"); 
+table_addcolumn("mydata", "foundP2"); 
+table_addcolumn("mydata", "foundP3"); 
+table_addcolumn("mydata", "foundZ1"); 
+table_addcolumn("mydata", "foundZ2"); 
+table_addcolumn("mydata", "foundZ3"); 
+return;} 
+ 
+void setup_parameters()
+{   /* min - max - initial - norm/lnorm -  fixed? - display?  */ 
+parameter_create("aRP1",0.01,200,1.547964,0,-1,1); 
+parameter_create("aRP2",0.01,200,1.012115,0,-1,1); 
+parameter_create("aRP3",0.01,200,0.700546,0,-1,1); 
+parameter_create("aJZ1",0.01,200,17.195059,0,-1,1); 
+parameter_create("aJZ2",0.01,200,301.297189,0,-1,1); 
+parameter_create("aJZ3",0.01,200,0.182029,0,-1,1); 
+parameter_create("aTZ1",0.01,200,0.16087,0,-1,1); 
+parameter_create("aTZ2",0.01,200,0.244807,0,-1,1); 
+parameter_create("aTZ3",0.01,200,0.159113,0,-1,1); 
+parameter_create("startP1",1,20,0.005,0,1,1);
+parameter_create("startP2",1,20,0.048,0,1,1);
+parameter_create("startP3",1,20,0.007,0,1,1);
+parameter_create("startZ1",1,20,0.001,0,1,1);
+parameter_create("startZ2",1,20,0.021,0,1,1);
+parameter_create("startZ3",1,20,0.037,0,1,1);
+parameter_create("fR",0.1,1,0.9,0,1,1);
+parameter_create("K",0.1,5,0.91,0,-1,1);
+parameter_create("sdZ",0.1,5,2.5,0,-1,1);
+parameter_create("sdP",0.1,5,1.4,0,-1,1);
+parameter_create("fJ",0.1,1,0.9,0,1,1);
+parameter_create("d",1e-05,0.1,0.005,0,-1,1);
+parameter_create("W",0.1,10,1,0,-1,1);
+parameter_create("q",1,2.5,1.2,0,-1,1);
+parameter_showall();
+                PAUSE
+                return;
+}  
+ void write_Hy( const state_type &x , const double t )
+{ 
+table_writevalue_multichain("mydata", "foundP1", timerow,x[0]); 
+table_writevalue_multichain("mydata", "foundP2", timerow,x[1]); 
+table_writevalue_multichain("mydata", "foundP3", timerow,x[2]); 
+table_writevalue_multichain("mydata", "foundZ1", timerow,x[3]); 
+table_writevalue_multichain("mydata", "foundZ2", timerow,x[4]); 
+table_writevalue_multichain("mydata", "foundZ3", timerow,x[5]); 
+timerow++;
+} 
+double probP1; double realP1; double foundP1; 
+double probP2; double realP2; double foundP2; 
+double probP3; double realP3; double foundP3; 
+double probZ1; double realZ1; double foundZ1; 
+double probZ2; double realZ2; double foundZ2; 
+double probZ3; double realZ3; double foundZ3; 
+void likelihood()
+{
+set_metr_ltotnew(0.0); /* set sum over log-Likelihood to zero */
+set_metr_number_ok(0);
+int numdata;
+timerow = 0;
+aRP1=cv("aRP1");
+aRP2=cv("aRP2");
+aRP3=cv("aRP3");
+aTZ1=cv("aTZ1");
+aTZ2=cv("aTZ2");
+aTZ3=cv("aTZ3");
+aJZ1=cv("aJZ1");
+aJZ2=cv("aJZ2");
+aJZ3=cv("aJZ3");
+startP1=cv("startP1");
+startP2=cv("startP2");
+startP3=cv("startP3");
+startZ1=cv("startZ1");
+startZ2=cv("startZ2");
+startZ3=cv("startZ3");
+fR=cv("fR");
+K=cv("K");
+sdZ=cv("sdZ");
+sdP=cv("sdP");
+fJ=cv("fJ");
+d=cv("d");
+W=cv("W");
+q=cv("q");
+  timerow = 0;
+              state_type x = {startP1,startP2,startP3,startZ1,startZ2,startZ3}; 
+integrate_const(controlled_stepper,ODE,x,0.0,1.4,0.1,write_Hy ); 
+numdata = 14;
+                     for(int ii = 0; ii < numdata; ii++)
+{ realP1 = table_getvalue("mydata", "P1",ii);
+realP2 = table_getvalue("mydata", "P2",ii);
+realP3 = table_getvalue("mydata", "P3",ii);
+realZ1 = table_getvalue("mydata", "Z1",ii);
+realZ2 = table_getvalue("mydata", "Z2",ii);
+realZ3 = table_getvalue("mydata", "Z3",ii);
+foundP1 = table_getvalue("mydata", "foundP1",ii);
+foundP2 = table_getvalue("mydata", "foundP2",ii);
+foundP3 = table_getvalue("mydata", "foundP3",ii);
+foundZ1 = table_getvalue("mydata", "foundZ1",ii);
+foundZ2 = table_getvalue("mydata", "foundZ2",ii);
+foundZ3 = table_getvalue("mydata", "foundZ3",ii);
+inc_metr_ltotnew(log(probP1=lognormal_density(realP1, foundP1,sdP)));
+inc_metr_ltotnew(log(probP2=lognormal_density(realP2, foundP2,sdP)));
+inc_metr_ltotnew(log(probP3=lognormal_density(realP3, foundP3,sdP)));
+inc_metr_ltotnew(log(probZ1=lognormal_density(realZ1, foundZ1,sdZ)));
+inc_metr_ltotnew(log(probZ2=lognormal_density(realZ2, foundZ2,sdZ)));
+inc_metr_ltotnew(log(probZ3=lognormal_density(realZ3, foundZ3,sdZ)));
+inc_metr_number_ok(1); // adds one to the sample size, used in BIC later on 
+ }
+                   return;
+} 
+void final_output()
+{
+                   /* create link to file */
+                   char fname[100];
+                   /* create file name for output -- outp is the path */
+                   get_filzbach_path(fname, 100);
+                   /* now your bit to add to the path */
+                   strcat_s(fname,"_my_output.txt");
+                   /* run the most likely set of parameters */
+                   params_set_to_posterior_mean();
+                   likelihood();
+                   /* print internal table out to file with name taken from above */
+                   table_output("mydata",fname);
+                   return;
+}
+                   
+                   /* ************************************************* */
+                   /* The control function that calls everything else.  */
+                   /* ************************************************* */
+                   
+                   int main()
+{
+                   atexit(pause);
+                   // set the likelihood function pointer
+                   pfn_likelihood = &likelihood;
+                   initialize_filzbach();
+                   name_analysis("ATNmcmcExample"); 
+            read_data();
+             setup_parameters();
+             set_chains(1);
+             runmcmc(10000,10000,0,0); // Burn-in, Bayes, MLE adaption, MLE search
+             final_output();
+}
+             #endif
+             
